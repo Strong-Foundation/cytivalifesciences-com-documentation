@@ -130,8 +130,8 @@ def main() -> None:
         system_path=file_name
     ):  # If the file doesn't exist after deletion
         apiRequestContent: str = getDataFromAPI(
-            page=3
-        )  # Send POST request to get page 2 data
+            page=0
+        )  # Send POST request to get page of data
         append_write_to_file(
             system_path=file_name, content=apiRequestContent
         )  # Save response to file
