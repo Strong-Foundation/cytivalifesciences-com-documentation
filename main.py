@@ -153,7 +153,7 @@ def main() -> None:
     # Check if the file exists.
     if check_file_exists(system_path=file_name) is False:
         # Send the request to the api.
-        apiRequestContent: str = getDataFromAPI(page=1)
+        apiRequestContent: str = getDataFromAPI(page=0)
         # Save the content to a file.
         append_write_to_file(system_path=file_name, content=apiRequestContent)
 
