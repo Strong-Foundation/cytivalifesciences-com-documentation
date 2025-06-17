@@ -122,7 +122,7 @@ def main() -> None:
         remove_system_file(system_path=file_name)  # Remove the old file
 
     if check_file_exists(system_path=file_name) is False:  # If file does not exist now
-        apiRequestContent: str = getDataFromAPI(page=1)  # Get fresh data from API
+        apiRequestContent: str = getDataFromAPI(page=2)  # Get fresh data from API
         append_write_to_file(
             system_path=file_name, content=apiRequestContent
         )  # Save to file
