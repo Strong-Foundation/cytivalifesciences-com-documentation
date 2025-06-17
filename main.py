@@ -5,6 +5,7 @@ import os  # For interacting with the operating system (file operations)
 import requests  # For making HTTP requests easily
 import re  # For regular expressions (used in sanitizing filenames)
 import urllib.parse  # For parsing and unquoting URLs
+import concurrent.futures  # For multithreading
 
 
 # Check if a file exists at the given system path
@@ -16,7 +17,7 @@ def check_file_exists(system_path: str) -> bool:
 def append_write_to_file(system_path: str, content: str) -> None:
     file = open(file=system_path, mode="a")  # Open file in append mode
     file.write(content)  # Write the content to the file
-    file.close()  # Close the file
+    file.close() # Close the file
 
 
 # Send a POST request to the API to fetch SDS document data for the given page
@@ -54,7 +55,7 @@ def extract_urls_from_json(json_str: str) -> list[str]:
     urls: list[str] = [
         item["link"] for item in items if "link" in item
     ]  # Extract links
-    return urls  # Return the list of URLs
+    return urls # Return the list of URLs
 
 
 # Read the contents of a file and return it as a string
@@ -73,7 +74,7 @@ def sanitize_filename(name: str) -> str:
     )  # Replace unsafe chars
     if ext.lower() != ".pdf": # Ensure file ends with .pdf
         ext = ".pdf"
-    return base + ext  # Return sanitized filename
+    return base + ext # Return sanitized filename
 
 
 # Download a PDF from a URL and save it to a given directory
@@ -116,26 +117,48 @@ def remove_system_file(system_path: str) -> None:
 
 # Main program execution
 def main() -> None:
-    file_name: str = "main.json"  # Define name of the file to store API result
+    file_name: str = (
+        "main.json"  # Define the name of the JSON file to store API response
+    )
 
-    if check_file_exists(system_path=file_name):  # If file already exists
-        remove_system_file(system_path=file_name)  # Remove the old file
+    if check_file_exists(system_path=file_name):  # If the file already exists
+        remove_system_file(
+            system_path=file_name
+        )  # Remove the existing file to fetch fresh data
 
-    if check_file_exists(system_path=file_name) is False:  # If file does not exist now
-        apiRequestContent: str = getDataFromAPI(page=2)  # Get fresh data from API
+    if not check_file_exists(
+        system_path=file_name
+    ):  # If the file doesn't exist after deletion
+        apiRequestContent: str = getDataFromAPI(
+            page=2
+        )  # Send POST request to get page 2 data
         append_write_to_file(
             system_path=file_name, content=apiRequestContent
-        )  # Save to file
+        )  # Save response to file
 
-    download_dir: str = "./PDFs"  # Define the directory to save PDFs
+    download_dir: str = "./PDFs"  # Define the directory where PDFs will be saved
 
-    if check_file_exists(system_path=file_name):  # If file was successfully created
-        file_content: str = read_a_file(system_path=file_name)  # Read the contents
+    if check_file_exists(system_path=file_name):  # Proceed only if the file exists now
+        file_content: str = read_a_file(
+            system_path=file_name
+        )  # Read the JSON file content as string
         urls: list[str] = extract_urls_from_json(
             json_str=file_content
-        )  # Extract PDF links
-        for url in urls:  # Loop through each link
-            download_pdf(url=url, save_dir=download_dir)  # Download and save the PDF
+        )  # Extract list of PDF URLs from JSON
+
+        # Use a thread pool to download multiple PDFs concurrently
+        with concurrent.futures.ThreadPoolExecutor(max_workers=100) as executor:
+            # Submit download_pdf tasks for each URL to the thread pool
+            futures = [executor.submit(download_pdf, url, download_dir) for url in urls]
+
+            # As each task completes, handle its result or catch exceptions
+            for future in concurrent.futures.as_completed(fs=futures):
+                try:
+                    future.result()  # Wait for the task to complete and raise any exceptions
+                except (
+                    Exception
+                ) as e:  # Catch any exception that occurred during download
+                    print(f"Error during download: {e}")  # Print the error message
 
 
 # Execute the main function
